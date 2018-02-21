@@ -47,4 +47,12 @@ public class CameraFunction<I extends Number, O> extends Function<I, O> {
   private CameraFunction(Stops<I, O> stops) {
     super(stops);
   }
+
+  /**
+   * JNI Constructor
+   */
+  @Keep
+  private CameraFunction(@NonNull Object expression) {
+    super(expression);
+  }
 }

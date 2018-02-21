@@ -12,7 +12,7 @@
 #include "../functions/interval_stops.hpp"
 
 #include <jni/jni.hpp>
-
+#include "json.hpp"
 #include <tuple>
 #include <map>
 
@@ -167,13 +167,14 @@ struct Converter<jni::jobject*, mbgl::style::CameraFunction<T>> {
 
     Result<jni::jobject*> operator()(jni::JNIEnv& env, const mbgl::style::CameraFunction<T>& value) const {
         static jni::jclass* clazz = jni::NewGlobalRef(env, &jni::FindClass(env, "com/mapbox/mapboxsdk/style/functions/CameraFunction")).release();
-        static jni::jmethodID* constructor = &jni::GetMethodID(env, *clazz, "<init>", "(Lcom/mapbox/mapboxsdk/style/functions/stops/Stops;)V");
+        static jni::jmethodID* constructor = &jni::GetMethodID(env, *clazz, "<init>", "(Ljava/lang/Object;)V");
 
-        StopsEvaluator<T> evaluator(env);
-        jni::jobject* stops = apply_visitor(evaluator, value.stops);
-        jni::jobject* converted = &jni::NewObject(env, *clazz, *constructor, stops);
+        // Convert expressions
+        mbgl::Value expressionValue = value.getExpression().serialize();
+        JsonEvaluator jsonEvaluator{env};
+        jni::jobject* converted = apply_visitor(jsonEvaluator, expressionValue);
 
-        return { converted };
+        return &jni::NewObject(env, *clazz, *constructor, converted);
     }
 };
 
@@ -183,11 +184,12 @@ struct Converter<jni::jobject*, mbgl::style::SourceFunction<T>> {
     Result<jni::jobject*> operator()(jni::JNIEnv& env, const mbgl::style::SourceFunction<T>& value) const {
         static jni::jclass* clazz = jni::NewGlobalRef(env, &jni::FindClass(env, "com/mapbox/mapboxsdk/style/functions/SourceFunction")).release();
         static jni::jmethodID* constructor = &jni::GetMethodID(env, *clazz, "<init>",
-                                                               "(Ljava/lang/Object;Ljava/lang/String;Lcom/mapbox/mapboxsdk/style/functions/stops/Stops;)V");
+                                                               "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/Object;)V");
 
-        // Convert stops
-        StopsEvaluator<T> evaluator(env);
-        jni::jobject* stops = apply_visitor(evaluator, value.stops);
+        // Convert expressions
+        mbgl::Value expressionValue = value.getExpression().serialize();
+        JsonEvaluator jsonEvaluator{env};
+        jni::jobject* converted = apply_visitor(jsonEvaluator, expressionValue);
 
         // Convert default value
         jni::jobject* defaultValue = nullptr;
@@ -195,7 +197,7 @@ struct Converter<jni::jobject*, mbgl::style::SourceFunction<T>> {
             defaultValue = *convert<jni::jobject*>(env, *value.defaultValue);
         }
 
-        return { &jni::NewObject(env, *clazz, *constructor, defaultValue, jni::Make<jni::String>(env, value.property).Get(), stops) };
+        return { &jni::NewObject(env, *clazz, *constructor, defaultValue, jni::Make<jni::String>(env, value.property).Get(), converted) };
     }
 };
 
@@ -205,12 +207,12 @@ struct Converter<jni::jobject*, mbgl::style::CompositeFunction<T>> {
     Result<jni::jobject*> operator()(jni::JNIEnv& env, const mbgl::style::CompositeFunction<T>& value) const {
         static jni::jclass* clazz = jni::NewGlobalRef(env, &jni::FindClass(env, "com/mapbox/mapboxsdk/style/functions/CompositeFunction")).release();
         static jni::jmethodID* constructor = &jni::GetMethodID(env, *clazz, "<init>",
-                                                                "(Ljava/lang/Object;Ljava/lang/String;Lcom/mapbox/mapboxsdk/style/functions/stops/Stops;)V");
+                                                                "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/Object;)V");
 
-        // Convert stops
-        StopsEvaluator<T> evaluator(env);
-        jni::jobject* stops = apply_visitor(evaluator, value.stops);
-
+        // Convert expressions
+        mbgl::Value expressionValue = value.getExpression().serialize();
+        JsonEvaluator jsonEvaluator{env};
+        jni::jobject* converted = apply_visitor(jsonEvaluator, expressionValue);
 
         // Convert default value
         jni::jobject* defaultValue = nullptr;
@@ -218,7 +220,7 @@ struct Converter<jni::jobject*, mbgl::style::CompositeFunction<T>> {
             defaultValue = *convert<jni::jobject*>(env, *value.defaultValue);
         }
 
-        return { &jni::NewObject(env, *clazz, *constructor, defaultValue, jni::Make<jni::String>(env, value.property).Get(), stops) };
+        return { &jni::NewObject(env, *clazz, *constructor, defaultValue, jni::Make<jni::String>(env, value.property).Get(), converted) };
     }
 };
 

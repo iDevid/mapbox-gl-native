@@ -57,6 +57,15 @@ public class CompositeFunction<Z extends Number, I, O> extends Function<Stop.Com
   }
 
   /**
+   * JNI Constructor
+   */
+  private CompositeFunction(@Nullable O defaultValue, @NonNull String property, Object expression) {
+    super(expression);
+    this.defaultValue = new PropertyValue<>(property, defaultValue);
+    this.property = property;
+  }
+
+  /**
    * Set the default value
    *
    * @param defaultValue the default value to use when no other applies

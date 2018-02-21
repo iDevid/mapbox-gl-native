@@ -3,6 +3,7 @@ package com.mapbox.mapboxsdk.style.functions;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
+import com.google.gson.JsonArray;
 import com.mapbox.mapboxsdk.style.functions.stops.Stops;
 import com.mapbox.mapboxsdk.style.layers.PropertyValue;
 
@@ -41,6 +42,14 @@ public class SourceFunction<I, O> extends Function<I, O> {
     this.defaultValue = defaultValue != null ? new PropertyValue<>(property, defaultValue) : null;
   }
 
+  /**
+   * JNI Constructor
+   */
+  private SourceFunction(@Nullable O defaultValue, @NonNull String property, @NonNull Object expression) {
+    super(expression);
+    this.property = property;
+    this.defaultValue = defaultValue != null ? new PropertyValue<>(property, defaultValue) : null;
+  }
 
   /**
    * INTERNAL USAGE ONLY

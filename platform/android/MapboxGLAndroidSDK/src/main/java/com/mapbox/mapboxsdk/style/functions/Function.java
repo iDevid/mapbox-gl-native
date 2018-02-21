@@ -3,6 +3,10 @@ package com.mapbox.mapboxsdk.style.functions;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
+import com.mapbox.mapboxsdk.style.expressions.Expression;
 import com.mapbox.mapboxsdk.style.functions.stops.CategoricalStops;
 import com.mapbox.mapboxsdk.style.functions.stops.ExponentialStops;
 import com.mapbox.mapboxsdk.style.functions.stops.IdentityStops;
@@ -10,6 +14,8 @@ import com.mapbox.mapboxsdk.style.functions.stops.IntervalStops;
 import com.mapbox.mapboxsdk.style.functions.stops.Stop;
 import com.mapbox.mapboxsdk.style.functions.stops.Stops;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import timber.log.Timber;
@@ -249,7 +255,8 @@ public class Function<I, O> {
 
   // Class definition //
 
-  private final Stops<I, O> stops;
+  private Stops<I, O> stops;
+  private JsonArray expression;
 
   /**
    * JNI Cosntructor for implementation classes
@@ -259,6 +266,47 @@ public class Function<I, O> {
   Function(@NonNull Stops<I, O> stops) {
     this.stops = stops;
   }
+
+  Function(Object object) {
+    if (object instanceof JsonArray) {
+      this.expression = (JsonArray) object;
+    } else {
+      throw new RuntimeException("Object is not a JsonArray!");
+    }
+  }
+
+  public Expression getExpression() {
+    return convert(this.expression);
+  }
+
+  private Expression convert(JsonArray jsonArray) {
+    final String operator = jsonArray.get(0).getAsString();
+    final List<Expression> arguments = new ArrayList<>();
+
+    JsonElement jsonElement;
+    JsonPrimitive jsonPrimitive;
+    for (int i = 1; i < jsonArray.size(); i++) {
+      jsonElement = jsonArray.get(i);
+      if (jsonElement instanceof JsonArray) {
+        arguments.add(convert((JsonArray) jsonElement));
+      } else if (jsonElement instanceof JsonPrimitive) {
+        jsonPrimitive = (JsonPrimitive) jsonElement;
+        if (jsonPrimitive.isBoolean()) {
+          arguments.add(new Expression.ExpressionLiteral(jsonElement.getAsBoolean()));
+        } else if (jsonPrimitive.isNumber()) {
+          arguments.add(new Expression.ExpressionLiteral(jsonElement.getAsFloat()));
+        } else if (jsonPrimitive.isString()) {
+          arguments.add(new Expression.ExpressionLiteral(jsonElement.getAsString()));
+        } else {
+          throw new RuntimeException("unsupported conversion");
+        }
+      } else {
+        throw new RuntimeException("unsupported conversion");
+      }
+    }
+    return new Expression(operator, arguments.toArray(new Expression[arguments.size()]));
+  }
+
 
   /**
    * @return the stops in this function
